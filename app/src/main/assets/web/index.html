@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Synci</title>
+    <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+    <main class="shell">
+        <header class="topbar">
+            <div>
+                <h1>Synci</h1>
+                <p>Sidephone Library</p>
+            </div>
+
+            <label class="add-button">
+                Add
+                <input id="fileInput" type="file" multiple hidden />
+            </label>
+        </header>
+
+        <nav class="tabs" aria-label="Library">
+            <button class="tab active" data-target="photos">Photos</button>
+            <button class="tab" data-target="music">Music</button>
+            <button class="tab" data-target="documents">Documents</button>
+            <button class="tab" data-target="contacts">Contacts</button>
+            <button class="tab" data-target="other">Other</button>
+        </nav>
+
+        <section id="dropZone" class="drop-zone">
+            <span>Drop files here</span>
+        </section>
+
+        <section id="playlistSection" class="playlist-section hidden">
+            <div class="section-title">
+                <h2>Playlists</h2>
+            </div>
+            <div id="playlists" class="playlist-row"></div>
+        </section>
+
+        <section class="section-title">
+            <h2 id="viewTitle">Photos</h2>
+            <button id="refreshButton" class="ghost-button">Refresh</button>
+        </section>
+
+        <section id="content" class="content-grid photos-grid"></section>
+    </main>
+
+    <template id="photoTemplate">
+        <article class="photo-card">
+            <img class="photo-img" alt="" loading="lazy" />
+            <div class="floating-actions">
+                <a class="icon-link download" title="Download">↓</a>
+                <button class="icon-button delete" title="Delete">×</button>
+            </div>
+        </article>
+    </template>
+
+    <template id="musicTemplate">
+        <article class="music-row">
+            <img class="cover" alt="" loading="lazy" />
+            <div class="music-info">
+                <strong class="music-title"></strong>
+                <span class="music-meta"></span>
+            </div>
+            <div class="row-actions">
+                <a class="small-link download">Download</a>
+                <button class="small-danger delete">Delete</button>
+            </div>
+        </article>
+    </template>
+
+    <template id="fileTemplate">
+        <article class="file-row">
+            <div class="file-icon">⌁</div>
+            <div class="file-info">
+                <strong class="file-title"></strong>
+                <span class="file-meta"></span>
+            </div>
+            <div class="row-actions">
+                <a class="small-link download">Download</a>
+                <button class="small-danger delete">Delete</button>
+            </div>
+        </article>
+    </template>
+
+    <script src="/app.js"></script>
+</body>
+</html>
