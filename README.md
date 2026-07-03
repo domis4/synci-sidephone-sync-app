@@ -54,6 +54,7 @@ Build and install:
 ./gradlew clean assembleDebug
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb shell monkey -p com.wnderlvst.sidephonesync 1
+```
 
 ## LICENSE
 
