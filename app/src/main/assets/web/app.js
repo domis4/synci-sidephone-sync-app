@@ -5,10 +5,10 @@ const state = {
 
 const tabs = Array.from(document.querySelectorAll(".tab"));
 const content = document.getElementById("content");
+const dropZone = content;
 const viewTitle = document.getElementById("viewTitle");
 const refreshButton = document.getElementById("refreshButton");
 const fileInput = document.getElementById("fileInput");
-const dropZone = document.getElementById("dropZone");
 const playlistSection = document.getElementById("playlistSection");
 const playlists = document.getElementById("playlists");
 
@@ -82,6 +82,7 @@ async function loadLibrary() {
         ? "content-grid photos-grid"
         : "content-grid " + (state.target === "music" ? "music-list" : "file-list");
 
+    content.setAttribute("data-drop-label", "Drop to add");
     content.innerHTML = `<div class="empty">Loading</div>`;
 
     const response = await fetch("/api/list?target=" + encodeURIComponent(state.target));
@@ -106,7 +107,7 @@ function renderItems() {
     content.innerHTML = "";
 
     if (state.items.length === 0) {
-        content.innerHTML = `<div class="empty">No items</div>`;
+        content.innerHTML = `<div class="empty">No items — drop files here</div>`;
         return;
     }
 
@@ -233,8 +234,8 @@ async function uploadFiles(files) {
     const list = Array.from(files);
     if (list.length === 0) return;
 
-    dropZone.classList.add("dragging");
-    dropZone.textContent = "Uploading";
+    content.classList.add("dragging");
+    content.setAttribute("data-drop-label", "Uploading");
 
     try {
         for (const file of list) {
@@ -258,10 +259,15 @@ async function uploadFiles(files) {
     } catch (error) {
         alert(error.message);
     } finally {
-        dropZone.classList.remove("dragging");
-        dropZone.innerHTML = "<span>Drop files here</span>";
+        content.classList.remove("dragging");
+        content.setAttribute("data-drop-label", "Drop to add");
         fileInput.value = "";
     }
+}
+
+function preventDefaults(event) {
+    event.preventDefault();
+    event.stopPropagation();
 }
 
 tabs.forEach(tab => {
@@ -274,23 +280,23 @@ fileInput.addEventListener("change", () => {
     uploadFiles(fileInput.files);
 });
 
-dropZone.addEventListener("dragenter", event => {
-    event.preventDefault();
-    dropZone.classList.add("dragging");
+["dragenter", "dragover"].forEach(eventName => {
+    content.addEventListener(eventName, event => {
+        preventDefaults(event);
+        content.classList.add("dragging");
+        content.setAttribute("data-drop-label", "Drop to add");
+    });
 });
 
-dropZone.addEventListener("dragover", event => {
-    event.preventDefault();
-    dropZone.classList.add("dragging");
+["dragleave", "drop"].forEach(eventName => {
+    content.addEventListener(eventName, event => {
+        preventDefaults(event);
+        content.classList.remove("dragging");
+        content.setAttribute("data-drop-label", "Drop to add");
+    });
 });
 
-dropZone.addEventListener("dragleave", () => {
-    dropZone.classList.remove("dragging");
-});
-
-dropZone.addEventListener("drop", event => {
-    event.preventDefault();
-    dropZone.classList.remove("dragging");
+content.addEventListener("drop", event => {
     uploadFiles(event.dataTransfer.files);
 });
 

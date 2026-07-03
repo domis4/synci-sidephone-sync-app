@@ -14,31 +14,39 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import com.google.zxing.BarcodeFormat
@@ -75,28 +83,25 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    SyncHomeScreen(
-                        modifier = Modifier.padding(innerPadding),
-                        isRunning = isRunning.value,
-                        serverUrl = serverUrl.value,
-                        onStart = {
-                            try {
-                                SynciRuntime.start(applicationContext)
-                                serverUrl.value = SynciRuntime.currentUrl() ?: "unavailable"
-                                isRunning.value = true
-                            } catch (_: Exception) {
-                                isRunning.value = false
-                                serverUrl.value = null
-                            }
-                        },
-                        onStop = {
-                            SynciRuntime.stop()
-                            isRunning.value = false
+                SynciHomeScreen(
+                    isRunning = isRunning.value,
+                    serverUrl = serverUrl.value,
+                    onStart = {
+                        try {
+                            SynciRuntime.start(applicationContext)
+                            serverUrl.value = SynciRuntime.currentUrl() ?: "unavailable"
+                            isRunning.value = true
+                        } catch (_: Exception) {
                             serverUrl.value = null
+                            isRunning.value = false
                         }
-                    )
-                }
+                    },
+                    onStop = {
+                        SynciRuntime.stop(applicationContext)
+                        serverUrl.value = null
+                        isRunning.value = false
+                    }
+                )
             }
         }
     }
@@ -113,7 +118,8 @@ class MainActivity : ComponentActivity() {
         val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             arrayOf(
                 Manifest.permission.READ_MEDIA_AUDIO,
-                Manifest.permission.READ_MEDIA_IMAGES
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.POST_NOTIFICATIONS
             )
         } else {
             arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
@@ -143,79 +149,209 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun SyncHomeScreen(
-    modifier: Modifier = Modifier,
+fun SynciHomeScreen(
     isRunning: Boolean,
     serverUrl: String?,
     onStart: () -> Unit,
     onStop: () -> Unit
 ) {
-    Column(
-        modifier = modifier
+    Box(
+        modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 22.dp, vertical = 20.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .synciDarkBackground()
+            .padding(
+                start = 18.dp,
+                end = 18.dp,
+                top = 34.dp,
+                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 18.dp
+            ),
+        contentAlignment = Alignment.Center
     ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(
+                    elevation = 18.dp,
+                    shape = RoundedCornerShape(28.dp),
+                    ambientColor = Color.Black.copy(alpha = 0.45f),
+                    spotColor = Color.Black.copy(alpha = 0.65f)
+                )
+                .synciDarkPanel(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            SynciDarkHeader()
+
             Column(
                 modifier = Modifier.padding(
-                    start = 22.dp,
-                    end = 22.dp,
-                    top = 22.dp,
-                    bottom = 20.dp
+                    start = 18.dp,
+                    end = 18.dp,
+                    top = 14.dp,
+                    bottom = 16.dp
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Synci",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold
+                    text = if (isRunning) "Server Running" else "Ready",
+                    color = Color(0xFFE8E8EA),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
                 )
 
                 if (serverUrl != null) {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
                         text = serverUrl,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                        color = Color(0xFFBFC4CC),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .synciDarkInsetField()
+                            .padding(horizontal = 10.dp, vertical = 9.dp)
                     )
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     QrCodeView(
                         content = serverUrl,
-                        modifier = Modifier.size(120.dp)
+                        modifier = Modifier.size(134.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                Button(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    onClick = if (isRunning) onStop else onStart,
-                    colors = if (isRunning) {
-                        ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
-                        )
-                    } else {
-                        ButtonDefaults.buttonColors()
-                    }
-                ) {
-                    Text(
-                        text = if (isRunning) "Stop Sync" else "Start Sync"
-                    )
-                }
+                SynciDarkButton(
+                    text = if (isRunning) "Stop Sync" else "Start Sync",
+                    isDanger = isRunning,
+                    onClick = if (isRunning) onStop else onStart
+                )
             }
+        }
+    }
+}
+
+@Composable
+fun SynciDarkHeader() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(58.dp)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF5A6878),
+                        Color(0xFF394655),
+                        Color(0xFF252C35)
+                    )
+                ),
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+            )
+            .border(
+                width = 1.dp,
+                color = Color(0xFF11161C),
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+            )
+            .drawBehind {
+                drawLine(
+                    color = Color.White.copy(alpha = 0.22f),
+                    start = Offset(0f, 1f),
+                    end = Offset(size.width, 1f),
+                    strokeWidth = 1.5f
+                )
+                drawLine(
+                    color = Color.Black.copy(alpha = 0.65f),
+                    start = Offset(0f, size.height - 1f),
+                    end = Offset(size.width, size.height - 1f),
+                    strokeWidth = 1.5f
+                )
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Synci",
+            color = Color(0xFFF4F5F7),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+fun SynciDarkButton(
+    text: String,
+    isDanger: Boolean,
+    onClick: () -> Unit
+) {
+    val colors = if (isDanger) {
+        listOf(
+            Color(0xFFEA8D84),
+            Color(0xFFB83B35),
+            Color(0xFF7F1F1B)
+        )
+    } else {
+        listOf(
+            Color(0xFFA6C5E8),
+            Color(0xFF5B86B8),
+            Color(0xFF294B78)
+        )
+    }
+
+    val borderColor = if (isDanger) {
+        Color(0xFF661915)
+    } else {
+        Color(0xFF1E3558)
+    }
+
+    Button(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp),
+        onClick = onClick,
+        shape = RoundedCornerShape(15.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.Transparent,
+            contentColor = Color.White
+        ),
+        contentPadding = PaddingValues()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(colors),
+                    shape = RoundedCornerShape(15.dp)
+                )
+                .border(
+                    width = 1.dp,
+                    color = borderColor,
+                    shape = RoundedCornerShape(15.dp)
+                )
+                .drawBehind {
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.46f),
+                        start = Offset(6f, 2f),
+                        end = Offset(size.width - 6f, 2f),
+                        strokeWidth = 1.6f
+                    )
+                    drawLine(
+                        color = Color.Black.copy(alpha = 0.42f),
+                        start = Offset(6f, size.height - 2f),
+                        end = Offset(size.width - 6f, size.height - 2f),
+                        strokeWidth = 1.6f
+                    )
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = text,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium
+            )
         }
     }
 }
@@ -231,8 +367,21 @@ fun QrCodeView(
 
     Box(
         modifier = modifier
-            .background(Color.White, RoundedCornerShape(18.dp))
-            .padding(12.dp),
+            .background(
+                brush = Brush.verticalGradient(
+                    listOf(
+                        Color(0xFFF7F7F7),
+                        Color(0xFFE2E2E2)
+                    )
+                ),
+                shape = RoundedCornerShape(17.dp)
+            )
+            .border(
+                width = 1.dp,
+                color = Color(0xFF9C9C9C),
+                shape = RoundedCornerShape(17.dp)
+            )
+            .padding(10.dp),
         contentAlignment = Alignment.Center
     ) {
         Image(
@@ -241,6 +390,100 @@ fun QrCodeView(
             modifier = Modifier.fillMaxSize()
         )
     }
+}
+
+fun Modifier.synciDarkPanel(): Modifier {
+    return this
+        .background(
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF2B2D31),
+                    Color(0xFF202225),
+                    Color(0xFF17191C)
+                )
+            ),
+            shape = RoundedCornerShape(28.dp)
+        )
+        .border(
+            width = 1.dp,
+            color = Color(0xFF464A50),
+            shape = RoundedCornerShape(28.dp)
+        )
+        .drawBehind {
+            drawLine(
+                color = Color.White.copy(alpha = 0.18f),
+                start = Offset(20f, 2f),
+                end = Offset(size.width - 20f, 2f),
+                strokeWidth = 1.6f
+            )
+        }
+}
+
+fun Modifier.synciDarkInsetField(): Modifier {
+    return this
+        .background(
+            brush = Brush.verticalGradient(
+                listOf(
+                    Color(0xFF121316),
+                    Color(0xFF24272C)
+                )
+            ),
+            shape = RoundedCornerShape(11.dp)
+        )
+        .border(
+            width = 1.dp,
+            color = Color(0xFF4E535A),
+            shape = RoundedCornerShape(11.dp)
+        )
+        .drawBehind {
+            drawLine(
+                color = Color.Black.copy(alpha = 0.75f),
+                start = Offset(8f, 1f),
+                end = Offset(size.width - 8f, 1f),
+                strokeWidth = 1.4f
+            )
+            drawLine(
+                color = Color.White.copy(alpha = 0.08f),
+                start = Offset(8f, size.height - 1f),
+                end = Offset(size.width - 8f, size.height - 1f),
+                strokeWidth = 1.4f
+            )
+        }
+}
+
+fun Modifier.synciDarkBackground(): Modifier {
+    return this
+        .background(
+            brush = Brush.linearGradient(
+                colors = listOf(
+                    Color(0xFF111418),
+                    Color(0xFF1E242B),
+                    Color(0xFF0A0B0D)
+                ),
+                tileMode = TileMode.Clamp
+            )
+        )
+        .drawBehind {
+            val stripeColor = Color.White.copy(alpha = 0.018f)
+            val darkStripe = Color.Black.copy(alpha = 0.055f)
+
+            var x = 0f
+            while (x < size.width) {
+                drawLine(
+                    color = stripeColor,
+                    start = Offset(x, 0f),
+                    end = Offset(x, size.height),
+                    strokeWidth = 1f
+                )
+                drawLine(
+                    color = darkStripe,
+                    start = Offset(x + 2f, 0f),
+                    end = Offset(x + 2f, size.height),
+                    strokeWidth = 1f
+                )
+                x += 4f
+            }
+        }
 }
 
 fun generateQrCodeBitmap(content: String, size: Int): Bitmap {
